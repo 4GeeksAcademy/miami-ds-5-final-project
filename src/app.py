@@ -5,7 +5,7 @@ from pickle import load
 from PIL import Image
 import io
 
-# Import your model class
+# Import your model definition
 from model_module import SimpleCNN
 
 app = Flask(__name__)
@@ -43,13 +43,19 @@ def index():
             # Load the image directly from memory
             image = Image.open(io.BytesIO(image_file.read())).convert('RGB')  # Convert to RGB to match model input
 
-            # TODO: Apply the preprocessing transformations & add batch dimension
-            image_tensor = 
+            # Apply the preprocessing transformations
+            image_tensor = data_transform(image).unsqueeze(0)  # Add batch dimension
 
             # Check the shape of the processed image tensor
             print(image_tensor.shape)  # Should be (1, 3, 28, 28)
 
-            # TODO: Use the model to make a prediction
+            # Use the model to make a prediction
+            model.eval()  # Set model to evaluation mode
+            with torch.no_grad():
+                output = model(image_tensor)
+                _, predicted = torch.max(output, 1)
+                pred_label = predicted.item()
+                pred_class = class_dict[pred_label]
 
     return render_template("index.html", prediction=pred_class)
 
