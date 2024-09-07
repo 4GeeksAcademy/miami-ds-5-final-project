@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Predicting Colon Cancer Histology Slide Content</title>
+    <title>Image Classification</title>
 </head>
 <body>
-    <h1>Choose a File</h1>
-    <form action="/" method="post" enctype="multipart/form-data">
-        <input type="file" id="fileInput" name="fileInput" accept="image/*">
-        <input type="submit" value="Predict">
+    <h1>Upload an Image</h1>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="fileInput" accept="image/*">
+        <input type="submit" value="Submit">
     </form>
-    {% if prediction != None %}
-        <h3>Prediction: {{ prediction }}</h3>
+
+    {% if cluster %}
+        <h2>Cluster Prediction</h2>
+        <p>The image belongs to: {{ cluster }}</p>
     {% endif %}
 </body>
 </html>
