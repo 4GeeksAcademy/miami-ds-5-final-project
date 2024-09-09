@@ -9,10 +9,10 @@ import io
 app = Flask(__name__)
 
 # Load KMeans clustering model
-kmeans_model = load(open("../models/kmodel.dat", "rb"))
+kmeans_model = load(open("./models/kmodel.dat", "rb"))
 
 # Load your trained models
-model_dict = {i: joblib.load(f'../.venv/{i}Model95acc.joblib') for i in range(4)}
+model_dict = {i: joblib.load(f'./.venv/{i}Model95acc.joblib') for i in range(4)}
 
 class_dict = {
     0: 'adipose', 
