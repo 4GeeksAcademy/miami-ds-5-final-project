@@ -69,13 +69,11 @@
     </form>
 
     {% if cluster %}
-        <h2>Cluster Prediction</h2>
-        <p>The image belongs to: {{ cluster }}</p>
+        <h2>Cluster Prediction: {{ cluster }}</h2>
     {% endif %}
 
     {% if prediction %}
-        <h3>Prediction: {{ prediction }}</h3>
+        <h3>Class Prediction: {{ prediction }}</h3>
     {% endif %}
 </body>
 </html>
-

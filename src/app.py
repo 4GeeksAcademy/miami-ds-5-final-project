@@ -2,9 +2,9 @@ from flask import Flask, request, render_template
 from pickle import load
 from PIL import Image
 import numpy as np
-from sklearn.cluster import KMeans
 import joblib
 import io
+import tensorflow as tf  # Ensure TensorFlow is imported for model operations
 
 app = Flask(__name__)
 
@@ -14,6 +14,7 @@ kmeans_model = load(open("./models/kmodel.dat", "rb"))
 # Load your trained models
 model_dict = {i: joblib.load(f'./.venv/{i}Model95acc.joblib') for i in range(4)}
 
+# Dictionary to map class indices to class names
 class_dict = {
     0: 'adipose', 
     1: 'background', 
@@ -58,6 +59,7 @@ def extract_rgb_statistics(image):
 @app.route("/", methods=["GET", "POST"])
 def index():
     cluster_description = None
+    class_prediction = None
     error_message = None
 
     if request.method == "POST":
@@ -77,15 +79,28 @@ def index():
 
                 # Step 3: Predict the group/cluster using KMeans
                 cluster_label = kmeans_model.predict([rgb_features])[0]
-
-                # Convert cluster index to a descriptive name if needed
                 cluster_description = f"Cluster {cluster_label}"
+
+                # Step 4: Predict the class using the appropriate model
+                model = model_dict.get(cluster_label)
+                if model is None:
+                    class_prediction = "Model not found for the predicted cluster."
+                else:
+                    # Use `predict` instead of `predict_proba` for TensorFlow/Keras models
+                    class_probs = model.predict(image_array)
+                    predicted_class_index = np.argmax(class_probs)
+                    class_prediction = class_dict.get(predicted_class_index, "Unknown class")
+
+                    # Debug: Print class probabilities and prediction
+                    print(f"Class Probabilities: {class_probs}")
+                    print(f"Predicted Class Index: {predicted_class_index}")
+                    print(f"Class Prediction: {class_prediction}")
 
         except Exception as e:
             error_message = str(e)
             print(f"Error: {error_message}")
 
-    return render_template("index.html", cluster=cluster_description, error=error_message)
+    return render_template("index.html", cluster=cluster_description, prediction=class_prediction, error=error_message)
 
 if __name__ == "__main__":
     app.run(debug=True)
