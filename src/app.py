@@ -21,15 +21,15 @@ model_dict = {i: joblib.load(f'./.venv/{i}Model95acc.joblib') for i in range(4)}
 
 # Dictionary to map class indices to class names and descriptions
 class_dict = {
-    0: ('adipose', 'Adipose tissue, which consists of fat cells.'),
-    1: ('background', 'Background, which represents non-relevant areas.'),
-    2: ('debris', 'Debris, including particles or waste materials.'),
-    3: ('lymphocytes', 'Lymphocytes, a type of white blood cell.'),
-    4: ('mucus', 'Mucus, a slippery secretion produced by mucous membranes.'),
-    5: ('smooth muscle', 'Smooth muscle tissue, found in various organs.'),
-    6: ('normal colon mucosa', 'Normal colon mucosa, the inner lining of the colon.'),
-    7: ('cancer-associated stroma', 'Cancer-associated stroma, the supportive tissue around cancer cells.'),
-    8: ('colorectal adenocarcinoma epithelium', 'Colorectal adenocarcinoma epithelium, a type of cancerous tissue.')
+    0: {'name': 'adipose', 'description': 'Adipose tissue, commonly known as body fat, is a connective tissue that stores energy in the form of fat.'},
+    1: {'name': 'background', 'description': 'Background refers to the non-specific or irrelevant areas in the image that do not correspond to any class of interest.'},
+    2: {'name': 'debris', 'description': 'Debris includes small fragments or remnants that are often considered as waste material in the histology slide.'},
+    3: {'name': 'lymphocytes', 'description': 'Lymphocytes are a type of white blood cell crucial for the immune system, involved in the body’s defense against pathogens.'},
+    4: {'name': 'mucus', 'description': 'Mucus is a viscous fluid secreted by mucous membranes that serves to protect and lubricate tissues.'},
+    5: {'name': 'smooth muscle', 'description': 'Smooth muscle tissue is a type of involuntary muscle found in various organs and structures, responsible for involuntary movements.'},
+    6: {'name': 'normal colon mucosa', 'description': 'Normal colon mucosa refers to the healthy lining of the colon, which is important for proper digestive function.'},
+    7: {'name': 'cancer-associated stroma', 'description': 'Cancer-associated stroma is the supportive tissue surrounding cancer cells that can influence tumor growth and progression.'},
+    8: {'name': 'colorectal adenocarcinoma epithelium', 'description': 'Colorectal adenocarcinoma epithelium refers to the cancerous epithelial cells found in colorectal cancer.'}
 }
 
 # Function to preprocess the image
@@ -77,12 +77,12 @@ def index():
                 else:
                     class_probs = model.predict(image_array)
                     predicted_class_index = np.argmax(class_probs)
-                    class_name, class_description = class_dict.get(predicted_class_index, ("Unknown class", "No description available."))
-                    class_prediction = class_name
-                    description = class_description
+                    class_info = class_dict.get(predicted_class_index, {'name': 'Unknown', 'description': 'No description available'})
+                    class_prediction = class_info['name']
+                    description = class_info['description']
                     print(f"Class Probabilities: {class_probs}")
                     print(f"Predicted Class Index: {predicted_class_index}")
-                    print(f"Class Prediction: {class_name}")
+                    print(f"Class Prediction: {class_prediction}")
 
         except Exception as e:
             error_message = str(e)
