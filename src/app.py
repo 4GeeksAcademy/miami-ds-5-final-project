@@ -14,10 +14,27 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # Load KMeans clustering model
-kmeans_model = load(open("./models/kmodel.dat", "rb"))
+kmeans_model = load(open("../models/kmodel.dat", "rb"))
 
-# Load your trained models
-model_dict = {i: joblib.load(f'./.venv/{i}Model95acc.joblib') for i in range(4)}
+# Directory where models are stored
+model_directory = '../.venv/'
+
+# Initialize a dictionary to store the models
+model_dict = {}
+
+# Loop through the model indices
+for i in range(4):
+    model_path = f'{model_directory}{i}Model95acc.joblib'
+    try:
+        model = joblib.load(model_path)
+        model_dict[i] = model
+        print(f"Model {i} loaded successfully.")
+    except Exception as e:
+        print(f"Error loading model {i}: {e}")
+
+# Print out the keys of loaded models
+print("Loaded models:", model_dict.keys())
+
 
 # Dictionary to map class indices to class names and descriptions
 class_dict = {
