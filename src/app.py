@@ -17,7 +17,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 kmeans_model = load(open("../models/kmodel.dat", "rb"))
 
 # Directory where models are stored
-model_directory = '../.venv/'
+model_directory = '../models/'
 
 # Initialize a dictionary to store the models
 model_dict = {}
