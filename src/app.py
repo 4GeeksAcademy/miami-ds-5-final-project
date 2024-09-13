@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, url_for
+import pandas as pd
 from pickle import load
 from PIL import Image
 import numpy as np
@@ -38,15 +39,15 @@ print("Loaded models:", model_dict.keys())
 
 # Dictionary to map class indices to class names and descriptions
 class_dict = {
-    0: {'name': 'adipose', 'description': 'Adipose tissue, commonly known as body fat, is a connective tissue that stores energy in the form of fat.'},
-    1: {'name': 'background', 'description': 'Background refers to the non-specific or irrelevant areas in the image that do not correspond to any class of interest.'},
-    2: {'name': 'debris', 'description': 'Debris includes small fragments or remnants that are often considered as waste material in the histology slide.'},
-    3: {'name': 'lymphocytes', 'description': 'Lymphocytes are a type of white blood cell crucial for the immune system, involved in the body’s defense against pathogens.'},
-    4: {'name': 'mucus', 'description': 'Mucus is a viscous fluid secreted by mucous membranes that serves to protect and lubricate tissues.'},
-    5: {'name': 'smooth muscle', 'description': 'Smooth muscle tissue is a type of involuntary muscle found in various organs and structures, responsible for involuntary movements.'},
-    6: {'name': 'normal colon mucosa', 'description': 'Normal colon mucosa refers to the healthy lining of the colon, which is important for proper digestive function.'},
-    7: {'name': 'cancer-associated stroma', 'description': 'Cancer-associated stroma is the supportive tissue surrounding cancer cells that can influence tumor growth and progression.'},
-    8: {'name': 'colorectal adenocarcinoma epithelium', 'description': 'Colorectal adenocarcinoma epithelium refers to the cancerous epithelial cells found in colorectal cancer.'}
+    0: {'name': 'Adipose', 'description': 'Adipose tissue, commonly known as body fat, is a connective tissue that stores energy in the form of fat.'},
+    1: {'name': 'Background', 'description': 'Background refers to the non-specific or irrelevant areas in the image that do not correspond to any class of interest.'},
+    2: {'name': 'Debris', 'description': 'Debris includes small fragments or remnants that are often considered as waste material in the histology slide.'},
+    3: {'name': 'Lymphocytes', 'description': 'Lymphocytes are a type of white blood cell crucial for the immune system, involved in the body’s defense against pathogens.'},
+    4: {'name': 'Mucus', 'description': 'Mucus is a viscous fluid secreted by mucous membranes that serves to protect and lubricate tissues.'},
+    5: {'name': 'Smooth Muscle', 'description': 'Smooth muscle tissue is a type of involuntary muscle found in various organs and structures, responsible for involuntary movements.'},
+    6: {'name': 'Normal Colon Mucosa', 'description': 'Normal colon mucosa refers to the healthy lining of the colon, which is important for proper digestive function.'},
+    7: {'name': 'Cancer-Associated Stroma', 'description': 'Cancer-associated stroma is the supportive tissue surrounding cancer cells that can influence tumor growth and progression.'},
+    8: {'name': 'Colorectal Adenocarcinoma Epithelium', 'description': 'Colorectal adenocarcinoma epithelium refers to the cancerous epithelial cells found in colorectal cancer.'}
 }
 
 # Function to preprocess the image
@@ -57,20 +58,25 @@ def preprocess_image(image):
 
 # Function to extract RGB statistics from an image
 def extract_rgb_statistics(image):
-    image_array = np.array(image)
-    r_channel = image_array[:, :, 0].flatten()
-    g_channel = image_array[:, :, 1].flatten()
-    b_channel = image_array[:, :, 2].flatten()
-    r_stats = [np.mean(r_channel), np.std(r_channel), np.min(r_channel), np.max(r_channel)]
-    g_stats = [np.mean(g_channel), np.std(g_channel), np.min(g_channel), np.max(g_channel)]
-    b_stats = [np.mean(b_channel), np.std(b_channel), np.min(b_channel), np.max(b_channel)]
-    features = np.array(r_stats + g_stats + b_stats)
-    return features
+    img = np.array(image)
+    red, green, blue = img[:, :, 0].flatten().tolist(), img[:, :, 1].flatten().tolist(), img[:, :,
+                                                                                            2].flatten().tolist()
+    colors = {'red': red, 'green': green, 'blue': blue}
+    funcs = {'_avg': np.mean, '_std': np.std, '_max': np.max, '_min': np.min}
+    results = {}
+    for _name, func in funcs.items():
+        for name, color in colors.items():
+            results[name + _name] = func(color)
+    return results
 
 @app.route("/", methods=["GET", "POST"])
 def index():
     class_prediction = None
     description = None
+    rgb_features = None
+    text_rgb = None
+    alt_rgb_1 = None
+    image_url = None
     error_message = None
 
     if request.method == "POST":
@@ -82,12 +88,16 @@ def index():
                 image_path = os.path.join(UPLOAD_FOLDER, 'uploaded_image.jpg')
                 image = Image.open(io.BytesIO(image_file.read())).convert('RGB')
                 image.save(image_path)
+                image_url = url_for('static', filename=f'uploads/uploaded_image.jpg')
 
                 # Preprocess and predict
                 image_array = preprocess_image(image)
                 image_array = image_array.reshape(1, 28, 28, 3)
                 rgb_features = extract_rgb_statistics(image)
-                cluster_label = kmeans_model.predict([rgb_features])[0]
+                cluster_label = kmeans_model.predict(pd.DataFrame(rgb_features, index=[0]))[0]
+                text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
+                alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
+                rgb_features = [v for k, v in rgb_features.items() if '_avg' in k]
                 model = model_dict.get(cluster_label)
                 if model is None:
                     class_prediction = "Model not found for the predicted cluster."
@@ -105,7 +115,7 @@ def index():
             error_message = str(e)
             print(f"Error: {error_message}")
 
-    return render_template("index.html", prediction=class_prediction, description=description, error=error_message)
+    return render_template("index.html", prediction=class_prediction, description=description, error=error_message, rgb_features=rgb_features, text_rgb = text_rgb, alt_rgb_1=alt_rgb_1, image=image_url)
 
 if __name__ == "__main__":
     app.run(debug=True)
