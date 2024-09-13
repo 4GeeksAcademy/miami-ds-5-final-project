@@ -4,16 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Predicting Colon Cancer Histology Slide Content</title>
-    <!-- Tailwind CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        /* Custom Background color using Python values */
         body {
             {% if rgb_features %}
             background-color: rgb({{ rgb_features[0] }}, {{ rgb_features[1] }}, {{ rgb_features[2] }});            
             {% else %}                
             background: linear-gradient(to right, #F8F9FA, #E9ECEF);
             {% endif %}
+            background-size: 150px 150px;
+            position: relative;
         }
         h3 {
             {% if text_rgb %}
@@ -21,20 +21,38 @@
             text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5)
             {% endif %}
         }
-        form {
+        form, div {
             {% if alt_rgb_1 %}
-            background-color: rgb({{ alt_rgb_1[0] }}, {{ alt_rgb_1[1] }}, {{ alt_rgb_1[2] }});
-            {% endif %}
-        }
-        div {
-            {% if alt_rgb_1 %}
-            background-color: rgb({{ alt_rgb_1[0] }}, {{ alt_rgb_1[1] }}, {{ alt_rgb_1[2] }});
-            text-color: rgb({{ text_rgb[0] }}, {{ text_rgb[1] }}, {{ text_rgb[2] }});
+            background-color: rgba({{ alt_rgb_1[0] }}, {{ alt_rgb_1[1] }}, {{ alt_rgb_1[2] }}, 0.7);
+            color: rgb({{ text_rgb[0] }}, {{ text_rgb[1] }}, {{ text_rgb[2] }});
             {% endif %}
         }
     </style>
 </head>
-<body class="font-sans text-gray-800 text-center py-12">
+<body id="bodyElement" class="font-sans text-gray-800 text-center py-12">
+
+    <script>
+        window.onload = function() {
+            const body = document.getElementById('bodyElement');
+            
+            const bodyWidth = window.innerWidth;
+            const bodyHeight = window.innerHeight;
+            
+            const cellSize = 150;
+    
+            const cellsX = Math.floor(bodyWidth / cellSize);
+            const cellsY = Math.floor(bodyHeight / cellSize);
+    
+            const randomX = Math.floor(Math.random() * cellsX) * cellSize;
+            const randomY = Math.floor(Math.random() * cellsY) * cellSize;
+    
+            body.style.backgroundImage = "url('/static/uploads/cell.png'), url('/static/uploads/cancer.png')";
+            body.style.backgroundRepeat = "repeat, no-repeat";
+            body.style.backgroundSize = "150px 150px";
+            body.style.backgroundPosition = `0 0, ${randomX}px ${randomY}px`;
+        };
+    </script>
+
     <h1 class="text-4xl font-bold text-black-600 mb-8">Upload an Image for Classification</h1>
     <form method="post" enctype="multipart/form-data" class="bg-grey-300 rounded-lg shadow-lg p-8 mx-auto max-w-lg">
         <input type="file" id="fileInput" name="fileInput" accept="image/*" class="block w-full text-gray-700 border border-gray-300 rounded-md p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500">
