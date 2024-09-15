@@ -6,6 +6,7 @@ import numpy as np
 import joblib
 import io
 import os
+import subprocess
 
 app = Flask(__name__)
 
@@ -17,6 +18,9 @@ if not os.path.exists(UPLOAD_FOLDER):
 # Load KMeans clustering model
 kmeans_model = load(open("../models/kmodel.dat", "rb"))
 
+subprocess.run(['apt-get', 'install', 'git-lfs'])
+subprocess.run(['git', 'lfs', 'install'])
+subprocess.run(['git', 'lfs', 'pull'])
 # Directory where models are stored
 model_directory = '../.venv/'
 
