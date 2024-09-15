@@ -1,1 +1,1 @@
-web: git lfs install && git lfs pull && cd src && pip install -r requirements.txt && gunicorn app:app
+web: cd src && pip install -r requirements.txt && gunicorn app:app

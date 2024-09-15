@@ -6,9 +6,15 @@ import numpy as np
 import joblib
 import io
 import os
-import subprocess
+from b2sdk.v2 import InMemoryAccountInfo, B2Api
 
 app = Flask(__name__)
+key_id = os.getenv('B2_KEY_ID')
+app_key = os.getenv('B2_APP_KEY')
+info = InMemoryAccountInfo()
+b2api = B2Api(info)
+b2api.authorize_account('production', key_id, app_key)
+bucket = b2api.get_bucket_by_name('PATHMINST-Models')
 
 # Set up paths
 UPLOAD_FOLDER = 'static/uploads'
@@ -19,7 +25,7 @@ if not os.path.exists(UPLOAD_FOLDER):
 kmeans_model = load(open("../models/kmodel.dat", "rb"))
 
 # Directory where models are stored
-model_directory = '../models/'
+model_directory = 'tmp/'
 
 # Initialize a dictionary to store the models
 model_dict = {}
@@ -28,6 +34,9 @@ model_dict = {}
 for i in range(4):
     model_path = f'{model_directory}{i}Model95acc.joblib'
     try:
+        with open(f'tmp/{i}Model.joblib', 'wb') as file:
+            download_version, _ = bucket.download_file_by_name(f'{i}Model95acc.joblib')
+            download_version.download(file)
         model = joblib.load(model_path)
         model_dict[i] = model
         print(f"Model {i} loaded successfully.")
