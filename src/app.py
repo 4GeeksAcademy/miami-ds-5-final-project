@@ -11,10 +11,26 @@ from b2sdk.v2 import InMemoryAccountInfo, B2Api
 app = Flask(__name__)
 key_id = os.getenv('B2_KEY_ID')
 app_key = os.getenv('B2_APP_KEY')
+print(key_id, app_key)
 info = InMemoryAccountInfo()
 b2api = B2Api(info)
 b2api.authorize_account('production', key_id, app_key)
 bucket = b2api.get_bucket_by_name('PATHMINST-Models')
+
+for i in ['cell', 'cancer']:
+    webp_image = Image.open(f'static/uploads/{i}.webp')
+    rgba_image = webp_image.convert("RGBA")
+    data = rgba_image.getdata()
+    new_data = []
+    for item in data:
+        if item[0] > 100 and item[1] > 100 and item[2] > 100:
+            new_data.append((255, 255, 255, 0))
+        else:
+            new_data.append(item)
+    rgba_image.putdata(new_data)
+    rgba_image.save(f'static/uploads/{i}.png', 'PNG')
+
+    print("Conversion complete: WEBP to PNG with transparent background.")
 
 # Set up paths
 UPLOAD_FOLDER = 'static/uploads'
@@ -31,15 +47,19 @@ model_directory = 'tmp/'
 model_dict = {}
 
 # Loop through the model indices
+os.makedirs('tmp', exist_ok=True)
+
 for i in range(4):
-    model_path = f'{model_directory}{i}Model95acc.joblib'
+    model_name = f'{i}Model95acc.joblib'
+    local_model_path = f'tmp/{i}Model.joblib'
+    
     try:
-        with open(f'tmp/{i}Model.joblib', 'wb') as file:
-            download_version, _ = bucket.download_file_by_name(f'{i}Model95acc.joblib')
-            download_version.download(file)
-        model = joblib.load(model_path)
+        download_version = bucket.download_file_by_name(model_name)
+        download_version.save_to(local_model_path)
+        model = joblib.load(local_model_path)
         model_dict[i] = model
         print(f"Model {i} loaded successfully.")
+    
     except Exception as e:
         print(f"Error loading model {i}: {e}")
 
