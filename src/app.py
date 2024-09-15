@@ -18,9 +18,6 @@ if not os.path.exists(UPLOAD_FOLDER):
 # Load KMeans clustering model
 kmeans_model = load(open("../models/kmodel.dat", "rb"))
 
-subprocess.run(['sudo', 'apt-get', 'install', 'git-lfs'])
-subprocess.run(['git', 'lfs', 'install'])
-subprocess.run(['git', 'lfs', 'pull'])
 # Directory where models are stored
 model_directory = '../models/'
 
