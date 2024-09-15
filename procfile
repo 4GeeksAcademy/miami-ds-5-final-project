@@ -1,1 +1,1 @@
-web: cd src && gunicorn app:app
+web: sudo apt-get install git-lfs && git lfs install && git lfs pull && cd src && pip install -r requirements.txt && gunicorn app:app
