@@ -1,1 +1,1 @@
-web: curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh && git lfs install && git lfs pull && cd src && pip install -r requirements.txt && gunicorn app:app
+web: curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && git lfs install && git lfs pull && cd src && pip install -r requirements.txt && gunicorn app:app
