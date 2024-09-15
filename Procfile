@@ -1,1 +1,1 @@
-web: cd src && pip install -r requirements.txt && gunicorn app:app
+web: cd src && gunicorn app:app
