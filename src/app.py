@@ -34,10 +34,13 @@ model_dict = {}
 for i in range(4):
     model_path = f'{model_directory}{i}Model95acc.joblib'
     try:
-        with open(f'tmp/{i}Model.joblib', 'wb') as file:
-            download_version, _ = bucket.download_file_by_name(f'{i}Model95acc.joblib')
-            download_version.download(file)
-        model = joblib.load(model_path)
+        try:
+            model = joblib.load(model_path)
+        except FileNotFoundError:
+            with open(f'tmp/{i}Model.joblib', 'wb') as file:
+                download_version, _ = bucket.download_file_by_name(f'{i}Model95acc.joblib')
+                download_version.download(file)
+            model = joblib.load(model_path)
         model_dict[i] = model
         print(f"Model {i} loaded successfully.")
     except Exception as e:
