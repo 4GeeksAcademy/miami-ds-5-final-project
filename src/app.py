@@ -53,15 +53,21 @@ for i in range(4):
     model_name = f'{i}Model95acc.joblib'
     local_model_path = f'tmp/{i}Model.joblib'
     
-    try:
-        download_version = bucket.download_file_by_name(model_name)
-        download_version.save_to(local_model_path)
-        model = joblib.load(local_model_path)
-        model_dict[i] = model
-        print(f"Model {i} loaded successfully.")
     
-    except Exception as e:
-        print(f"Error loading model {i}: {e}")
+    for i in range(4):
+        model_path = f'{model_directory}{i}Model95acc.joblib'
+        try:
+            try:
+                model = joblib.load(model_path)
+            except FileNotFoundError:
+                download_version = bucket.download_file_by_name(f'{i}Model95acc.joblib')
+                download_version.save_to(model_path)
+                model = joblib.load(model_path)
+            model_dict[i] = model
+            print(f"Model {i} loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model {i}: {e}")
+    
 
 # Print out the keys of loaded models
 print("Loaded models:", model_dict.keys())
