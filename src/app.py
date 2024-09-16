@@ -55,12 +55,12 @@ for i in range(4):
     
     
     for i in range(4):
-        model_path = f'{model_directory}{i}Model95acc.joblib'
+        model_path = f'{model_directory}{i}Model.joblib'
         try:
             try:
                 model = joblib.load(model_path)
             except FileNotFoundError:
-                download_version = bucket.download_file_by_name(f'{i}Model95acc.joblib')
+                download_version = bucket.download_file_by_name(f'{i}ModelLite.joblib')
                 download_version.save_to(model_path)
                 model = joblib.load(model_path)
             model_dict[i] = model
@@ -134,19 +134,21 @@ def index():
                 text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
                 alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
                 rgb_features = [v for k, v in rgb_features.items() if '_avg' in k]
-                model = model_dict.get(cluster_label)
-                if model is None:
+                model_bytes = model_dict.get(cluster_label)
+                if model_bytes is None:
                     class_prediction = "Model not found for the predicted cluster."
                 else:
-                    class_probs = model.predict(image_array)
+                    interpreter = tf.lite.Interpreter(model_content=model_bytes)
+                    interpreter.allocate_tensors()
+                    input_details = interpreter.get_input_details()
+                    output_details = interpreter.get_output_details()
+                    interpreter.set_tensor(input_details[0]['index'], image_array)
+                    interpreter.invoke()
+                    class_probs = interpreter.get_tensor(output_details[0]['index'])
                     predicted_class_index = np.argmax(class_probs)
                     class_info = class_dict.get(predicted_class_index, {'name': 'Unknown', 'description': 'No description available'})
                     class_prediction = class_info['name']
                     description = class_info['description']
-                    print(f"Class Probabilities: {class_probs}")
-                    print(f"Predicted Class Index: {predicted_class_index}")
-                    print(f"Class Prediction: {class_prediction}")
-
         except Exception as e:
             error_message = str(e)
             print(f"Error: {error_message}")
