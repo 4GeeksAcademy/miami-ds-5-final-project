@@ -154,5 +154,4 @@ def index():
     return render_template("index.html", prediction=class_prediction, description=description, error=error_message, rgb_features=rgb_features, text_rgb = text_rgb, alt_rgb_1=alt_rgb_1, image=image_url)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 locally, but use $PORT on Heroku
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True)
