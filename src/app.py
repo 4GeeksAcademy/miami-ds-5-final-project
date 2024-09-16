@@ -1,9 +1,9 @@
 from flask import Flask, request, render_template, url_for
 import pandas as pd
+import tensorflow as tf
 from pickle import load
 from PIL import Image
 import numpy as np
-import joblib
 import io
 import os
 from b2sdk.v2 import InMemoryAccountInfo, B2Api
@@ -48,26 +48,21 @@ model_dict = {}
 
 # Loop through the model indices
 os.makedirs('tmp', exist_ok=True)
-
+ 
 for i in range(4):
-    model_name = f'{i}Model95acc.joblib'
-    local_model_path = f'tmp/{i}Model.joblib'
-    
-    
-    for i in range(4):
-        model_path = f'{model_directory}{i}Model.joblib'
+    model_path = f'{model_directory}{i}Model.tflite'
+    try:
         try:
-            try:
-                model = joblib.load(model_path)
-            except FileNotFoundError:
-                download_version = bucket.download_file_by_name(f'{i}ModelLite.joblib')
-                download_version.save_to(model_path)
-                model = joblib.load(model_path)
-            model_dict[i] = model
-            print(f"Model {i} loaded successfully.")
-        except Exception as e:
-            print(f"Error loading model {i}: {e}")
-    
+            with open(model_path, 'rb') as file:
+                model_dict[i] = file.read()
+        except FileNotFoundError:
+            download_version = bucket.download_file_by_name(f'{i}Model.tflite')
+            download_version.save_to(model_path)
+            with open(model_path, 'rb') as file:
+                model_dict[i] = file.read()
+        print(f"Model {i} loaded successfully.")
+    except Exception as e:
+        print(f"Error loading model {i}: {e}")
 
 # Print out the keys of loaded models
 print("Loaded models:", model_dict.keys())
@@ -142,6 +137,7 @@ def index():
                     interpreter.allocate_tensors()
                     input_details = interpreter.get_input_details()
                     output_details = interpreter.get_output_details()
+                    image_array = image_array.astype(np.float32)
                     interpreter.set_tensor(input_details[0]['index'], image_array)
                     interpreter.invoke()
                     class_probs = interpreter.get_tensor(output_details[0]['index'])
