@@ -1,21 +1,16 @@
 from flask import Flask, request, render_template, url_for
 import pandas as pd
-import tensorflow as tf
 from pickle import load
 from PIL import Image
 import numpy as np
 import io
 import os
-from b2sdk.v2 import InMemoryAccountInfo, B2Api
+import torch
+from torchvision import transforms
+from new_model_training import Encoder, ClassificationHead, GeminiContrast
+
 
 app = Flask(__name__)
-key_id = os.getenv('B2_KEY_ID')
-app_key = os.getenv('B2_APP_KEY')
-print(key_id, app_key)
-info = InMemoryAccountInfo()
-b2api = B2Api(info)
-b2api.authorize_account('production', key_id, app_key)
-bucket = b2api.get_bucket_by_name('PATHMINST-Models')
 
 for i in ['cell', 'cancer']:
     webp_image = Image.open(f'static/uploads/{i}.webp')
@@ -37,35 +32,14 @@ UPLOAD_FOLDER = 'static/uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
-# Load KMeans clustering model
-kmeans_model = load(open("../models/kmodel.dat", "rb"))
-
-# Directory where models are stored
-model_directory = 'tmp/'
-
-# Initialize a dictionary to store the models
-model_dict = {}
-
-# Loop through the model indices
-os.makedirs('tmp', exist_ok=True)
- 
-for i in range(4):
-    model_path = f'{model_directory}{i}Model.tflite'
-    try:
-        try:
-            with open(model_path, 'rb') as file:
-                model_dict[i] = file.read()
-        except FileNotFoundError:
-            download_version = bucket.download_file_by_name(f'{i}Model.tflite')
-            download_version.save_to(model_path)
-            with open(model_path, 'rb') as file:
-                model_dict[i] = file.read()
-        print(f"Model {i} loaded successfully.")
-    except Exception as e:
-        print(f"Error loading model {i}: {e}")
-
-# Print out the keys of loaded models
-print("Loaded models:", model_dict.keys())
+# Set up Gemini Contrastive Model
+Castor = Encoder()
+Pollux = Encoder()
+Castor.load_state_dict(torch.load('models/Best-Castor-89-6.pth', map_location=torch.device('cpu')))
+Pollux.load_state_dict(torch.load('models/Best-Pollux-89-6.pth', map_location=torch.device('cpu')))
+class_head = ClassificationHead(256, 9)
+class_head.load_state_dict(torch.load('models/Best_Diviner-89-6.pth', map_location=torch.device('cpu')))
+gemini = GeminiContrast(Castor, Pollux, class_head)
 
 
 # Dictionary to map class indices to class names and descriptions
@@ -83,9 +57,13 @@ class_dict = {
 
 # Function to preprocess the image
 def preprocess_image(image):
+    supervised_transforms = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[.5, .5, .5], std=[.5, .5, .5])
+])
     image = image.resize((28, 28))
-    image_array = np.array(image) / 255.0  # Normalize pixel values to [0, 1]
-    return image_array
+    image = supervised_transforms(image)
+    return image
 
 # Function to extract RGB statistics from an image
 def extract_rgb_statistics(image):
@@ -123,28 +101,15 @@ def index():
 
                 # Preprocess and predict
                 image_array = preprocess_image(image)
-                image_array = image_array.reshape(1, 28, 28, 3)
                 rgb_features = extract_rgb_statistics(image)
-                cluster_label = kmeans_model.predict(pd.DataFrame(rgb_features, index=[0]))[0]
                 text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
                 alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
                 rgb_features = [v for k, v in rgb_features.items() if '_avg' in k]
-                model_bytes = model_dict.get(cluster_label)
-                if model_bytes is None:
-                    class_prediction = "Model not found for the predicted cluster."
-                else:
-                    interpreter = tf.lite.Interpreter(model_content=model_bytes)
-                    interpreter.allocate_tensors()
-                    input_details = interpreter.get_input_details()
-                    output_details = interpreter.get_output_details()
-                    image_array = image_array.astype(np.float32)
-                    interpreter.set_tensor(input_details[0]['index'], image_array)
-                    interpreter.invoke()
-                    class_probs = interpreter.get_tensor(output_details[0]['index'])
-                    predicted_class_index = np.argmax(class_probs)
-                    class_info = class_dict.get(predicted_class_index, {'name': 'Unknown', 'description': 'No description available'})
-                    class_prediction = class_info['name']
-                    description = class_info['description']
+                class_probs = gemini(image_array.unsqueeze(0))
+                predicted_class_index = class_probs.max(1)
+                class_info = class_dict.get(predicted_class_index.indices.item(), {'name': 'Unknown', 'description': 'No description available'})
+                class_prediction = class_info['name']
+                description = class_info['description']
         except Exception as e:
             error_message = str(e)
             print(f"Error: {error_message}")
