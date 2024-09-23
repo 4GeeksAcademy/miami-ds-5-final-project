@@ -1,9 +1,9 @@
 from flask import Flask, request, render_template, url_for
 import pandas as pd
+import tensorflow as tf
 from pickle import load
 from PIL import Image
 import numpy as np
-import joblib
 import io
 import os
 from b2sdk.v2 import InMemoryAccountInfo, B2Api
@@ -11,10 +11,26 @@ from b2sdk.v2 import InMemoryAccountInfo, B2Api
 app = Flask(__name__)
 key_id = os.getenv('B2_KEY_ID')
 app_key = os.getenv('B2_APP_KEY')
+print(key_id, app_key)
 info = InMemoryAccountInfo()
 b2api = B2Api(info)
 b2api.authorize_account('production', key_id, app_key)
 bucket = b2api.get_bucket_by_name('PATHMINST-Models')
+
+for i in ['cell', 'cancer']:
+    webp_image = Image.open(f'static/uploads/{i}.webp')
+    rgba_image = webp_image.convert("RGBA")
+    data = rgba_image.getdata()
+    new_data = []
+    for item in data:
+        if item[0] > 100 and item[1] > 100 and item[2] > 100:
+            new_data.append((255, 255, 255, 0))
+        else:
+            new_data.append(item)
+    rgba_image.putdata(new_data)
+    rgba_image.save(f'static/uploads/{i}.png', 'PNG')
+
+    print("Conversion complete: WEBP to PNG with transparent background.")
 
 # Set up paths
 UPLOAD_FOLDER = 'static/uploads'
@@ -31,17 +47,19 @@ model_directory = 'tmp/'
 model_dict = {}
 
 # Loop through the model indices
+os.makedirs('tmp', exist_ok=True)
+ 
 for i in range(4):
-    model_path = f'{model_directory}{i}Model95acc.joblib'
+    model_path = f'{model_directory}{i}Model.tflite'
     try:
         try:
-            model = joblib.load(model_path)
+            with open(model_path, 'rb') as file:
+                model_dict[i] = file.read()
         except FileNotFoundError:
-            with open(f'tmp/{i}Model.joblib', 'wb') as file:
-                download_version, _ = bucket.download_file_by_name(f'{i}Model95acc.joblib')
-                download_version.download(file)
-            model = joblib.load(model_path)
-        model_dict[i] = model
+            download_version = bucket.download_file_by_name(f'{i}Model.tflite')
+            download_version.save_to(model_path)
+            with open(model_path, 'rb') as file:
+                model_dict[i] = file.read()
         print(f"Model {i} loaded successfully.")
     except Exception as e:
         print(f"Error loading model {i}: {e}")
@@ -111,19 +129,22 @@ def index():
                 text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
                 alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
                 rgb_features = [v for k, v in rgb_features.items() if '_avg' in k]
-                model = model_dict.get(cluster_label)
-                if model is None:
+                model_bytes = model_dict.get(cluster_label)
+                if model_bytes is None:
                     class_prediction = "Model not found for the predicted cluster."
                 else:
-                    class_probs = model.predict(image_array)
+                    interpreter = tf.lite.Interpreter(model_content=model_bytes)
+                    interpreter.allocate_tensors()
+                    input_details = interpreter.get_input_details()
+                    output_details = interpreter.get_output_details()
+                    image_array = image_array.astype(np.float32)
+                    interpreter.set_tensor(input_details[0]['index'], image_array)
+                    interpreter.invoke()
+                    class_probs = interpreter.get_tensor(output_details[0]['index'])
                     predicted_class_index = np.argmax(class_probs)
                     class_info = class_dict.get(predicted_class_index, {'name': 'Unknown', 'description': 'No description available'})
                     class_prediction = class_info['name']
                     description = class_info['description']
-                    print(f"Class Probabilities: {class_probs}")
-                    print(f"Predicted Class Index: {predicted_class_index}")
-                    print(f"Class Prediction: {class_prediction}")
-
         except Exception as e:
             error_message = str(e)
             print(f"Error: {error_message}")
@@ -131,5 +152,4 @@ def index():
     return render_template("index.html", prediction=class_prediction, description=description, error=error_message, rgb_features=rgb_features, text_rgb = text_rgb, alt_rgb_1=alt_rgb_1, image=image_url)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Default to 5000 locally, but use $PORT on Heroku
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(debug=True)
