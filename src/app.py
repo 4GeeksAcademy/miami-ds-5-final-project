@@ -116,8 +116,8 @@ def index():
             image_file = request.files.get('fileInput')
 
             if image_file:
-                memory_process = multiprocessing.Process(target=monitor_memory)
-                memory_process.start()
+                # memory_process = multiprocessing.Process(target=monitor_memory)
+                # memory_process.start()
                 # Save the uploaded image
                 image_path = os.path.join(UPLOAD_FOLDER, 'uploaded_image.jpg')
                 image = Image.open(io.BytesIO(image_file.read())).convert('RGB')
@@ -138,7 +138,7 @@ def index():
                 class_info = class_dict.get(predicted_class_index.indices.item(), {'name': 'Unknown', 'description': 'No description available'})
                 class_prediction = class_info['name']
                 description = class_info['description']
-                memory_process.terminate()
+                # memory_process.terminate()
         except Exception as e:
             error_message = str(e)
             print(f"Error: {error_message}")
