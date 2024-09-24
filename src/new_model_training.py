@@ -21,6 +21,10 @@ warnings.warn = warn
 
 batch_size = 256
 
+# os.makedirs('encoders', exist_ok=True)
+# os.makedirs('class_heads', exist_ok=True)
+# os.makedirs('attention', exist_ok=True)
+
 
 class ContrastivePathMNIST(Dataset):
     def __init__(self, split='train', transform=None, download=False):

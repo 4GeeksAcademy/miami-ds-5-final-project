@@ -30,7 +30,7 @@ def monitor_memory():
         
         print(f"Process memory usage: {memory_usage_mb:.2f} MB")
         print(f"System free memory: {free_memory_mb:.2f} MB")
-        time.sleep(.1)
+        time.sleep(5)
 
 
 for i in ['cell', 'cancer']:
@@ -84,6 +84,7 @@ def preprocess_image(image):
 ])
     image = image.resize((28, 28))
     image = supervised_transforms(image)
+    print('preprocessed')
     return image
 
 # Function to extract RGB statistics from an image
@@ -97,6 +98,7 @@ def extract_rgb_statistics(image):
     for _name, func in funcs.items():
         for name, color in colors.items():
             results[name + _name] = func(color)
+    print('rgb done')
     return results
 
 @app.route("/", methods=["GET", "POST"])
@@ -128,8 +130,11 @@ def index():
                 text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
                 alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
                 rgb_features = [v for k, v in rgb_features.items() if '_avg' in k]
+                print('model warming up')
                 class_probs = gemini(image_array.unsqueeze(0))
+                print('model done running')
                 predicted_class_index = class_probs.max(1)
+                print('model returned a prediction')
                 class_info = class_dict.get(predicted_class_index.indices.item(), {'name': 'Unknown', 'description': 'No description available'})
                 class_prediction = class_info['name']
                 description = class_info['description']
