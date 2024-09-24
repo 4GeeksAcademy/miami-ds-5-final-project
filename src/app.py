@@ -5,12 +5,33 @@ from PIL import Image
 import numpy as np
 import io
 import os
+import time
 import torch
+import psutil
+import multiprocessing
 from torchvision import transforms
 from new_model_training import Encoder, ClassificationHead, GeminiContrast
 
 
 app = Flask(__name__)
+pid = os.getpid()
+process = psutil.Process(pid)
+
+def monitor_memory():
+    pid = os.getpid()
+    process = psutil.Process(pid)
+    
+    while True:
+        memory_info = process.memory_info()
+        memory_usage_mb = memory_info.rss / (1024 ** 2)
+        
+        system_memory = psutil.virtual_memory()
+        free_memory_mb = system_memory.available / (1024 ** 2)
+        
+        print(f"Process memory usage: {memory_usage_mb:.2f} MB")
+        print(f"System free memory: {free_memory_mb:.2f} MB")
+        time.sleep(.1)
+
 
 for i in ['cell', 'cancer']:
     webp_image = Image.open(f'static/uploads/{i}.webp')
@@ -93,6 +114,8 @@ def index():
             image_file = request.files.get('fileInput')
 
             if image_file:
+                memory_process = multiprocessing.Process(target=monitor_memory)
+                memory_process.start()
                 # Save the uploaded image
                 image_path = os.path.join(UPLOAD_FOLDER, 'uploaded_image.jpg')
                 image = Image.open(io.BytesIO(image_file.read())).convert('RGB')
@@ -110,10 +133,10 @@ def index():
                 class_info = class_dict.get(predicted_class_index.indices.item(), {'name': 'Unknown', 'description': 'No description available'})
                 class_prediction = class_info['name']
                 description = class_info['description']
+                memory_process.terminate()
         except Exception as e:
             error_message = str(e)
             print(f"Error: {error_message}")
-
     return render_template("index.html", prediction=class_prediction, description=description, error=error_message, rgb_features=rgb_features, text_rgb = text_rgb, alt_rgb_1=alt_rgb_1, image=image_url)
 
 if __name__ == "__main__":
