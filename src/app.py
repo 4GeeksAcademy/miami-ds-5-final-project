@@ -55,7 +55,7 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # Set up Gemini Contrastive Model
-def load_models()
+def load_models():
     Castor = Encoder()
     Pollux = Encoder()
     Castor.load_state_dict(torch.load('models/Best-Castor-89-6.pth', map_location=torch.device('cpu')))
@@ -155,4 +155,4 @@ def index():
     return render_template("index.html", prediction=class_prediction, description=description, error=error_message, rgb_features=rgb_features, text_rgb = text_rgb, alt_rgb_1=alt_rgb_1, image=image_url)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
