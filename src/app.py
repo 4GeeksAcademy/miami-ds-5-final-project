@@ -14,6 +14,7 @@ from new_model_training import Encoder, ClassificationHead, GeminiContrast
 
 
 app = Flask(__name__)
+print('app registered')
 pid = os.getpid()
 process = psutil.Process(pid)
 
@@ -61,6 +62,7 @@ Pollux.load_state_dict(torch.load('models/Best-Pollux-89-6.pth', map_location=to
 class_head = ClassificationHead(256, 9)
 class_head.load_state_dict(torch.load('models/Best_Diviner-89-6.pth', map_location=torch.device('cpu')))
 gemini = GeminiContrast(Castor, Pollux, class_head)
+print('models loaded')
 
 
 # Dictionary to map class indices to class names and descriptions
@@ -103,6 +105,7 @@ def extract_rgb_statistics(image):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
+    print('page loaded')
     class_prediction = None
     description = None
     rgb_features = None
@@ -112,10 +115,12 @@ def index():
     error_message = None
 
     if request.method == "POST":
+        print('post triggered')
         try:
             image_file = request.files.get('fileInput')
 
             if image_file:
+                print('image found')
                 # memory_process = multiprocessing.Process(target=monitor_memory)
                 # memory_process.start()
                 # Save the uploaded image
@@ -125,7 +130,9 @@ def index():
                 image_url = url_for('static', filename=f'uploads/uploaded_image.jpg')
 
                 # Preprocess and predict
+                print('preprocessing')
                 image_array = preprocess_image(image)
+                print('rgb-ing')
                 rgb_features = extract_rgb_statistics(image)
                 text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
                 alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
