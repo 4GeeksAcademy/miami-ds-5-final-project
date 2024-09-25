@@ -55,14 +55,16 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # Set up Gemini Contrastive Model
-Castor = Encoder()
-Pollux = Encoder()
-Castor.load_state_dict(torch.load('models/Best-Castor-89-6.pth', map_location=torch.device('cpu')))
-Pollux.load_state_dict(torch.load('models/Best-Pollux-89-6.pth', map_location=torch.device('cpu')))
-class_head = ClassificationHead(256, 9)
-class_head.load_state_dict(torch.load('models/Best_Diviner-89-6.pth', map_location=torch.device('cpu')))
-gemini = GeminiContrast(Castor, Pollux, class_head)
-print('models loaded')
+def load_models()
+    Castor = Encoder()
+    Pollux = Encoder()
+    Castor.load_state_dict(torch.load('models/Best-Castor-89-6.pth', map_location=torch.device('cpu')))
+    Pollux.load_state_dict(torch.load('models/Best-Pollux-89-6.pth', map_location=torch.device('cpu')))
+    class_head = ClassificationHead(256, 9)
+    class_head.load_state_dict(torch.load('models/Best_Diviner-89-6.pth', map_location=torch.device('cpu')))
+    gemini = GeminiContrast(Castor, Pollux, class_head)
+    print('models loaded')
+    return gemini
 
 
 # Dictionary to map class indices to class names and descriptions
@@ -137,6 +139,7 @@ def index():
                 text_rgb = [rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] - (rgb_features[f'{i}_std'] * 2)) >= 0 else 0 for i in ['red', 'green', 'blue']]
                 alt_rgb_1 = [rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2) if (rgb_features[f'{i}_avg'] + (rgb_features[f'{i}_std'] * 2)) <= 255 else 255 for i in ['red', 'green', 'blue']]
                 rgb_features = [v for k, v in rgb_features.items() if '_avg' in k]
+                gemini = load_models()
                 print('model warming up')
                 class_probs = gemini(image_array.unsqueeze(0))
                 print('model done running')
